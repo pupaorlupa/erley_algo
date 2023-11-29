@@ -1,11 +1,4 @@
-#include <cstdio>
-#include <iostream>
-#include <list>
 #include <memory>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 #include "grammar.cpp"
 #include "reader.cpp"
@@ -23,6 +16,7 @@ const std::string kPossibleTerminals(
 const int kMinimNonterm = 'A';
 const int kMaximNonterm = 'Z';
 const int kBuffSize = 1024;
+
 
 class EarleyParser {
  public:
@@ -99,11 +93,11 @@ class EarleyParser {
         nonterminal = ReadString(line, cursor);
         if (nonterminal.size() != 1 ||
             nonterminals.find(nonterminal[0]) == nonterminals.end()) {
-          throw;
+          throw "1";
         }
         arrow = ReadString(line, cursor);
         if (arrow != "->") {
-          throw;
+          throw "1";
         }
         try {
           expression = ReadString(line, cursor);
@@ -114,7 +108,7 @@ class EarleyParser {
         rules[nonterminal[0]].push_back(expression);
       } catch (...) {
         char buf[kBuffSize];
-        sprintf(buf, ParsingErrors::WRONG_RULE, i);
+        sprintf(buf, ParsingErrors::WRONG_RULE, i + 1);
         throw std::runtime_error(std::string(buf));
       }
     }
@@ -177,15 +171,3 @@ class EarleyParser {
   std::unordered_set<char> possible_terminals;
   char start_terminal;
 };
-
-int main() {
-  char name[20] = "text.txt";
-  std::shared_ptr<FileReader> reader = std::make_shared<FileReader>(name);
-
-  Grammar a;
-  EarleyParser parser;
-  parser.Parse(reader, a);
-  Earley b(a);
-  std::cout << (b.Predict("aabb") ? "YES" : "NO");
-  std::cout << (b.Predict("abb") ? "YES" : "NO");
-}
