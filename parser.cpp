@@ -41,18 +41,14 @@ class EarleyParser {
     int t_size = ReadInt(line, cursor);
     int rules_size = ReadInt(line, cursor);
     GetNonterminals(nont_size, reader);
-    GetTerminals(nont_size, reader);
+    GetTerminals(t_size, reader);
     GetRules(rules_size, reader);
     GetStartingNonterm(reader);
 
     reader->FinishUsage();
 
-    grammar = Grammar(nonterminals, terminals, rules, start_terminal);
+    grammar = Grammar(terminals, nonterminals, rules, start_terminal);
     Clear();
-  }
-
-  Grammar GetGrammar() {
-    return Grammar(nonterminals, terminals, rules, start_terminal);
   }
 
  private:
@@ -161,7 +157,7 @@ class EarleyParser {
 
   void VerifyLineEnd(std::string& given, int cursor) {
     for (; cursor < given.size(); ++cursor) {
-      if (given[cursor] != ' ' && given[cursor != '\n']) {
+      if (given[cursor] != ' ' && given[cursor] != '\n') {
         throw ParsingErrors::PARSING_ERROR;
       }
     }
@@ -190,4 +186,6 @@ int main() {
   EarleyParser parser;
   parser.Parse(reader, a);
   Earley b(a);
+  std::cout << (b.Predict("aabb") ? "YES" : "NO");
+  std::cout << (b.Predict("abb") ? "YES" : "NO");
 }

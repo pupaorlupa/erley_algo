@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include <vector>
 
-const char kStartTerm = '$';
+const char kStartNonterm = '$';
 const char kSpecSymb = '@';
 const char kLastSymb = '|';
 
@@ -50,6 +50,11 @@ class Earley {
   struct Situation {
     Situation() = default;
 
+    bool operator==(const Situation& other) const {
+      return (left_side == other.left_side && before == other.before &&
+              right_side == other.right_side && position == other.position);
+    }
+
     Situation(char left_side, int before, int position, std::string right_side)
         : left_side(left_side),
           before(before),
@@ -66,17 +71,19 @@ class Earley {
   Earley(Grammar grammar) : grammar(grammar) {}
 
   bool Predict(std::string word) {
+    Clear();
     for (auto ch : word) {
       if (grammar.GetSymbType(ch) != SymbType::Terminal) {
         return false;
       }
     }
+    grammar.nonterminals.insert(kStartNonterm);
     layers.resize(word.size() + 1);
     layers_by_nonterm.resize(word.size() + 1);
     std::string starting_string;
     starting_string += grammar.start_terminal;
-    layers_by_nonterm[0][kStartTerm].push_back(
-        Situation(kStartTerm, 0, 0, starting_string));
+    Situation start_sit = Situation(kStartNonterm, 0, 0, starting_string);
+    AddSituation(0, start_sit);
     bool changed;
     for (int i = 0; i <= word.size(); ++i) {
       Scan(i, word);
@@ -100,11 +107,16 @@ class Earley {
         PredictInside(i, word, changed);
       } while (changed);
     }
-    Situation sit(kStartTerm, 0, 1, starting_string);
+    Situation sit(kStartNonterm, 0, 1, starting_string);
     return layers[word.size()].count(sit) > 0;
   }
 
  private:
+  void Clear() {
+    layers.clear();
+    layers_by_nonterm.clear();
+  }
+
   void Complete(int layer, const std::string& word, bool& changed) {
     for (; comp_cursor < temp_for_complete.size(); ++comp_cursor) {
       auto sit = temp_for_complete[comp_cursor];
@@ -133,7 +145,9 @@ class Earley {
     if (layers[layer].count(sit) == 0) {
       layers[layer].insert(sit);
       layers_by_nonterm[layer][FindNextSymb(sit)].push_back(sit);
-      temp_for_predict.push_back(sit);
+      if (grammar.GetSymbType(FindNextSymb(sit)) == SymbType::Nonterminal) {
+        temp_for_predict.push_back(sit);
+      }
       if (FindNextSymb(sit) == kLastSymb) {
         temp_for_complete.push_back(sit);
       }
@@ -168,7 +182,7 @@ class Earley {
   }
 
   struct sit_hasher {
-    std::size_t operator()(Situation& sit) const {
+    std::size_t operator()(const Situation& sit) const {
       std::size_t seed1(0);
       ::hash_combine(seed1, sit.left_side);
       ::hash_combine(seed1, sit.before);
