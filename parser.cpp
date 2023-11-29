@@ -7,39 +7,22 @@
 #include <unordered_set>
 #include <vector>
 
+#include "grammar.cpp"
 #include "reader.cpp"
 
-enum SymbType { Undefined, Terminal, Nonterminal };
-namespace Errors {
+namespace ParsingErrors {
 std::runtime_error PARSING_ERROR("inappropriate parsing format");
 std::runtime_error INAPPROPRIATE_NONTERMINAL("inappropriate nonterminal value");
 std::runtime_error INAPPROPRIATE_TERMINAL("inappropriate terminal value");
 std::runtime_error WRONG_SIZE("expected size does not match real size");
 const char WRONG_RULE[] = "rule number %i is wrong";
-}  // namespace Errors
+}  // namespace ParsingErrors
 
 const std::string kPossibleTerminals(
-    "01234567890()abcdefghijklmnopqrstuvwxyz+-=/*");
+    "01234567890()[]{}abcdefghijklmnopqrstuvwxyz+-=/*");
 const int kMinimNonterm = 'A';
 const int kMaximNonterm = 'Z';
 const int kBuffSize = 1024;
-
-class Grammar {
- public:
-
- private:
-  SymbType CheckSymb(char symb) {
-    if (nonterminals.find(symb) != nonterminals.end()) {
-      return SymbType::Nonterminal;
-    } else if (terminals.find(symb) != terminals.end()) {
-      return SymbType::Terminal;
-    }
-    return SymbType::Undefined;
-  }
-
-  std::unordered_set<char> nonterminals;
-  std::unordered_set<char> terminals;
-};
 
 class EarleyParser {
  public:
@@ -49,10 +32,9 @@ class EarleyParser {
     }
   }
 
-  void Parse(std::shared_ptr<Reader> reader) {
+  void Parse(std::shared_ptr<Reader> reader, Grammar& grammar) {
     reader->SetUpUsage();
 
-    Clear();
     std::string line = reader->GetLine();
     int cursor = 0;
     int nont_size = ReadInt(line, cursor);
@@ -61,13 +43,17 @@ class EarleyParser {
     GetNonterminals(nont_size, reader);
     GetTerminals(nont_size, reader);
     GetRules(rules_size, reader);
+    GetStartingNonterm(reader);
 
     reader->FinishUsage();
+
+    grammar = Grammar(nonterminals, terminals, rules, start_terminal);
+    Clear();
   }
 
-  /* Grammar GetGrammar() { */
-  /*   return Grammar(nonterminals, terminals, rules, start); */
-  /* } */
+  Grammar GetGrammar() {
+    return Grammar(nonterminals, terminals, rules, start_terminal);
+  }
 
  private:
   void GetNonterminals(int nont_size, std::shared_ptr<Reader> reader) {
@@ -75,16 +61,17 @@ class EarleyParser {
     int cursor = 0;
     std::string alphabet;
     alphabet = ReadString(line, cursor);
+    VerifyLineEnd(line, cursor);
     int minim = kMinimNonterm;
     int maxim = kMaximNonterm;
     for (auto ch : alphabet) {
       if (static_cast<int>(ch) < minim || static_cast<int>(ch) > maxim) {
-        throw Errors::INAPPROPRIATE_NONTERMINAL;
+        throw ParsingErrors::INAPPROPRIATE_NONTERMINAL;
       }
       nonterminals.insert(ch);
     }
     if (static_cast<int>(nonterminals.size()) != nont_size) {
-      throw Errors::WRONG_SIZE;
+      throw ParsingErrors::WRONG_SIZE;
     }
   }
 
@@ -93,14 +80,15 @@ class EarleyParser {
     int cursor = 0;
     std::string alphabet;
     alphabet = ReadString(line, cursor);
+    VerifyLineEnd(line, cursor);
     for (auto ch : alphabet) {
       if (possible_terminals.find(ch) == possible_terminals.end()) {
-        throw Errors::INAPPROPRIATE_TERMINAL;
+        throw ParsingErrors::INAPPROPRIATE_TERMINAL;
       }
       terminals.insert(ch);
     }
     if (static_cast<int>(terminals.size()) != t_size) {
-      throw Errors::WRONG_SIZE;
+      throw ParsingErrors::WRONG_SIZE;
     }
   }
 
@@ -126,13 +114,26 @@ class EarleyParser {
         } catch (...) {
           expression = "";
         }
-        rules[nonterminal[0]].insert(expression);
+        VerifyLineEnd(line, cursor);
+        rules[nonterminal[0]].push_back(expression);
       } catch (...) {
         char buf[kBuffSize];
-        sprintf(buf, Errors::WRONG_RULE, i);
+        sprintf(buf, ParsingErrors::WRONG_RULE, i);
         throw std::runtime_error(std::string(buf));
       }
     }
+  }
+
+  void GetStartingNonterm(std::shared_ptr<Reader> reader) {
+    std::string line = reader->GetLine();
+    int cursor = 0;
+    std::string value = ReadString(line, cursor);
+    VerifyLineEnd(line, cursor);
+    if (value.size() != 1 ||
+        nonterminals.find(value[0]) == nonterminals.end()) {
+      throw ParsingErrors::PARSING_ERROR;
+    }
+    start_terminal = value[0];
   }
 
   void Clear() {
@@ -153,7 +154,7 @@ class EarleyParser {
       }
     }
     if (!begin) {
-      throw Errors::PARSING_ERROR;
+      throw ParsingErrors::PARSING_ERROR;
     }
     return answer;
   }
@@ -161,7 +162,7 @@ class EarleyParser {
   void VerifyLineEnd(std::string& given, int cursor) {
     for (; cursor < given.size(); ++cursor) {
       if (given[cursor] != ' ' && given[cursor != '\n']) {
-        throw Errors::PARSING_ERROR;
+        throw ParsingErrors::PARSING_ERROR;
       }
     }
   }
@@ -170,21 +171,23 @@ class EarleyParser {
     try {
       return stoi(ReadString(given, cursor));
     } catch (...) {
-      throw Errors::PARSING_ERROR;
+      throw ParsingErrors::PARSING_ERROR;
     }
   }
 
   std::unordered_set<char> terminals;
   std::unordered_set<char> nonterminals;
-  std::unordered_map<char, std::unordered_set<std::string>> rules;
+  std::unordered_map<char, std::list<std::string>> rules;
   std::unordered_set<char> possible_terminals;
-  char start;
+  char start_terminal;
 };
 
 int main() {
   char name[20] = "text.txt";
   std::shared_ptr<FileReader> reader = std::make_shared<FileReader>(name);
-  
+
+  Grammar a;
   EarleyParser parser;
-  parser.Parse(reader);
+  parser.Parse(reader, a);
+  Earley b(a);
 }
