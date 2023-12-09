@@ -1,5 +1,7 @@
 #include "parser.h"
 
+const char kLastSymbol = '$';
+
 Parser::Parser() {
   for (auto ch : kPossibleTerminals) {
     possible_terminals.insert(ch);
@@ -59,6 +61,7 @@ void Parser::GetTerminals(int t_size, std::shared_ptr<Reader> reader) {
   if (static_cast<int>(terminals.size()) != t_size) {
     throw ParsingErrors::WRONG_SIZE;
   }
+  terminals.insert(kLastSymbol);
 }
 
 void Parser::GetRules(int rules_size, std::shared_ptr<Reader> reader) {
@@ -83,6 +86,7 @@ void Parser::GetRules(int rules_size, std::shared_ptr<Reader> reader) {
       } catch (...) {
         expression = "";
       }
+      expression += kLastSymbol;
       VerifyLineEnd(line, cursor);
       rules[nonterminal[0]].push_back(expression);
     } catch (...) {
