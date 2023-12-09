@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "parser.h"
+#include "grammar.h"
 
 const char kStartNonterm = '@';
 const char kLastSymb = '$';
@@ -61,6 +61,7 @@ class LR1 {
 
  public:
   LR1(Grammar grammar) : grammar(grammar) {
+    grammar.DestroyUseless();
     std::string start;
     grammar.nonterminals.insert(kStartNonterm);
     start += grammar.start_terminal;

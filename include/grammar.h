@@ -16,6 +16,7 @@ class Grammar {
           std::unordered_map<char, std::list<std::string>> rules,
           char start_terminal);
 
+  void DestroyUseless();
   SymbType GetSymbType(char symb);
   std::unordered_set<char> terminals;
   std::unordered_set<char> nonterminals;
@@ -23,4 +24,3 @@ class Grammar {
   // по нетерминалу получаем все правила, где он стоит слева.
   char start_terminal;
 };
-

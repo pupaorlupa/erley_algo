@@ -17,3 +17,33 @@ SymbType Grammar::GetSymbType(char symb) {
   }
   return SymbType::Undefined;
 }
+
+void Grammar::DestroyUseless() {
+  std::unordered_set<char> useful;
+  std::unordered_set<char> useful_nont;
+  for (auto ch : terminals) {
+    useful.insert(ch);
+  }
+  size_t last_size;
+  do {
+    last_size = useful.size();
+    for (auto& rules_by_nont : rules) {
+      if (useful.count(rules_by_nont.first) == 0) {
+        for (auto& right_side : rules_by_nont.second) {
+          bool flag = true;
+          for (auto ch : right_side) {
+            if (useful.count(ch) == 0) {
+              flag = false;
+              break;
+            }
+          }
+          if (flag) {
+            useful.insert(rules_by_nont.first);
+            useful_nont.insert(rules_by_nont.first);
+          }
+        }
+      }
+    }
+  } while (last_size < useful.size());
+  nonterminals = useful_nont;
+}
