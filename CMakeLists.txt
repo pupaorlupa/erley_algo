@@ -1,12 +1,11 @@
+cmake_minimum_required(VERSION 3.0)
 
 project(LR1)
-add_executable(LR1 LR1.cpp)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
+add_executable(LR1 main.cpp)
+add_compile_definitions(GRAMMAR_PATH=\"${CMAKE_SOURCE_DIR}/grammar.txt\")
 
-set(SOURCE_FILES grammar.cpp parser.cpp reader.cpp)
-set (CMAKE_BUILD_TYPE Debug)
-add_library(Everything SHARED ${SOURCE_FILES})
-target_include_directories(Everything PUBLIC .)
-target_include_directories(LR1 PUBLIC .)
+add_subdirectory(core)
+target_include_directories(Everything PUBLIC include/)
 
-add_dependencies(LR1 Everything)
 target_link_libraries(LR1 Everything)
